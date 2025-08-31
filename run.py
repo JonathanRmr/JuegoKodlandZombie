@@ -22,33 +22,47 @@ VERDE = (0, 255, 0)
 class Jugador(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        imagen_original = pygame.image.load('./images/player.png').convert_alpha() # Carga la imagen del jugador
+        self.imagen_original = pygame.image.load('./images/player.png').convert_alpha() # Carga la imagen del jugador
         # Cambia el tamaño de la imagen (por ejemplo, 64x64 píxeles)
-        self.image = pygame.transform.scale(imagen_original, (64, 64))
+        self.imagen_original = pygame.transform.scale(self.imagen_original, (64, 64))
+        self.image = self.imagen_original
         self.rect = self.image.get_rect(center=(PANTALLA_ANCHO // 2, PANTALLA_ALTO // 2))
         self.velocidad = 5
         self.salud = 100
         self.max_salud = 100
+        self.angulo = 0  # Ángulo de rotación actual
 
     def mover(self):
+        # Obtener la posición del mouse
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        
+        # Calcular el ángulo entre el jugador y el mouse
+        dx = mouse_x - self.rect.centerx
+        dy = mouse_y - self.rect.centery
+        self.angulo = math.degrees(math.atan2(-dy, dx)) - 90
+        
+        # Rotar la imagen
+        self.image = pygame.transform.rotate(self.imagen_original, self.angulo)
+        self.rect = self.image.get_rect(center=self.rect.center)
+        # Movimiento normal con WASD
         teclas = pygame.key.get_pressed()
-        dx, dy = 0, 0
+        mov_x, mov_y = 0, 0
         if teclas[pygame.K_w]:
-            dy -= 1
+            mov_y -= 1
         if teclas[pygame.K_s]:
-            dy += 1
+            mov_y += 1
         if teclas[pygame.K_a]:
-            dx -= 1
+            mov_x -= 1
         if teclas[pygame.K_d]:
-            dx += 1
+            mov_x += 1
         
         # Normalizar la velocidad para el movimiento diagonal
-        if dx != 0 and dy != 0:
-            dx /= math.sqrt(2)
-            dy /= math.sqrt(2)
+        if mov_x != 0 and mov_y != 0:
+            mov_x /= math.sqrt(2)
+            mov_y /= math.sqrt(2)
 
-        self.rect.x += dx * self.velocidad
-        self.rect.y += dy * self.velocidad
+        self.rect.x += mov_x * self.velocidad
+        self.rect.y += mov_y * self.velocidad
 
         # Mantener al jugador dentro de la pantalla
         self.rect.clamp_ip(pantalla.get_rect())
