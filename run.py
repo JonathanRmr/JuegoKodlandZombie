@@ -17,6 +17,7 @@ pygame.display.set_caption("Zombie Survival")
 BLANCO = (255, 255, 255)
 NEGRO = (0, 0, 0)
 ROJO = (255, 0, 0)
+VERDE = (0, 255, 0)
 
 # --- Tipografía ---
 fuente_titulo = pygame.font.Font(None, 72)
@@ -104,7 +105,6 @@ class Bala(pygame.sprite.Sprite):
 class Zombie(pygame.sprite.Sprite):
     def __init__(self, velocidad):
         super().__init__()
-        # Se carga la imagen original
         self.imagen_original = pygame.image.load('./images/zombie.png').convert_alpha()
         self.imagen_original = pygame.transform.scale(self.imagen_original, (64, 64))
         self.image = self.imagen_original
@@ -121,14 +121,11 @@ class Zombie(pygame.sprite.Sprite):
         self.velocidad = velocidad
 
     def update(self, jugador_pos):
-        # Rotación para que el zombi mire al jugador
         dx_rotacion = jugador_pos[0] - self.rect.centerx
         dy_rotacion = jugador_pos[1] - self.rect.centery
-        angulo = math.degrees(math.atan2(-dy_rotacion, dx_rotacion)) - 90
+        angulo = math.degrees(math.atan2(-dy_rotacion, dx_rotacion)) + 90
         self.image = pygame.transform.rotate(self.imagen_original, angulo)
         self.rect = self.image.get_rect(center=self.rect.center)
-
-        # IA básica: seguir al jugador
         dx = jugador_pos[0] - self.rect.centerx
         dy = jugador_pos[1] - self.rect.centery
         dist = math.sqrt(dx**2 + dy**2)
@@ -157,31 +154,31 @@ class BossProjectile(pygame.sprite.Sprite):
 class Boss(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        # Se carga la imagen original
         self.imagen_original = pygame.image.load('./images/boss.png').convert_alpha()
         self.imagen_original = pygame.transform.scale(self.imagen_original, (128, 128))
         self.image = self.imagen_original
         self.rect = self.image.get_rect()
         self.rect.centerx = PANTALLA_ANCHO // 2
         self.rect.bottom = -self.rect.height
+        self.salud = 30
         self.velocidad_descenso = 3
         self.descendiendo = True
+        
         self.last_shot = pygame.time.get_ticks()
         self.shot_delay = random.randint(3000, 5000)
 
-        # Variables para el movimiento circular
         self.angulo_movimiento = 0
         self.radio_movimiento = 150
         self.velocidad_circular = 0.02
         self.centro_x = PANTALLA_ANCHO // 2
         self.centro_y = PANTALLA_ALTO // 2
+        self.angulo = 0
         
     def update(self, jugador_pos):
-        # Rotación para que el jefe mire al jugador
         dx_rotacion = jugador_pos[0] - self.rect.centerx
         dy_rotacion = jugador_pos[1] - self.rect.centery
-        angulo = math.degrees(math.atan2(-dy_rotacion, dx_rotacion)) - 90
-        self.image = pygame.transform.rotate(self.imagen_original, angulo)
+        self.angulo = math.degrees(math.atan2(-dy_rotacion, dx_rotacion)) + 90
+        self.image = pygame.transform.rotate(self.imagen_original, self.angulo)
         self.rect = self.image.get_rect(center=self.rect.center)
 
         if self.descendiendo:
@@ -190,23 +187,26 @@ class Boss(pygame.sprite.Sprite):
                 self.rect.top = 50
                 self.descendiendo = False
         else:
-            # Movimiento circular
             self.angulo_movimiento += self.velocidad_circular
             self.rect.centerx = self.centro_x + self.radio_movimiento * math.cos(self.angulo_movimiento)
             self.rect.centery = self.centro_y + self.radio_movimiento * math.sin(self.angulo_movimiento)
         
-        # Lógica de disparo
         now = pygame.time.get_ticks()
         if not self.descendiendo and now - self.last_shot > self.shot_delay:
             self.last_shot = now
             self.shot_delay = random.randint(3000, 5000)
-            self.disparar_proyectiles_abanico()
+            self.disparar_proyectiles_abanico(jugador_pos)
 
-    def disparar_proyectiles_abanico(self):
+    def disparar_proyectiles_abanico(self, jugador_pos):
         num_proyectiles = 7
-        angulo_inicial = 150
-        angulo_final = 30
-        incremento_angulo = (angulo_final - angulo_inicial) / (num_proyectiles - 1)
+        
+        dx = jugador_pos[0] - self.rect.centerx
+        dy = jugador_pos[1] - self.rect.centery
+        angulo_hacia_jugador = math.degrees(math.atan2(-dy, dx))
+        
+        angulo_inicial = angulo_hacia_jugador - 30
+        incremento_angulo = 10
+        
         for i in range(num_proyectiles):
             angulo = angulo_inicial + i * incremento_angulo
             proyectil = BossProjectile(self.rect.center, angulo)
@@ -246,6 +246,17 @@ def mostrar_game_over():
     game_over_rect = game_over_texto.get_rect(center=(PANTALLA_ANCHO // 2, PANTALLA_ALTO // 2 - 50))
     instrucciones_rect = instrucciones.get_rect(center=(PANTALLA_ANCHO // 2, PANTALLA_ALTO // 2 + 50))
     pantalla.blit(game_over_texto, game_over_rect)
+    pantalla.blit(instrucciones, instrucciones_rect)
+
+def mostrar_ganaste():
+    fondo_menu = pygame.image.load('./images/fondo_menu.png').convert()
+    fondo_menu = pygame.transform.scale(fondo_menu, (PANTALLA_ANCHO, PANTALLA_ALTO))
+    pantalla.blit(fondo_menu, (0, 0))
+    ganaste_texto = fuente_titulo.render("¡Felicitaciones, ganaste!", True, VERDE)
+    instrucciones = fuente_menu.render("Presiona ESPACIO o ENTER para reiniciar", True, BLANCO)
+    ganaste_rect = ganaste_texto.get_rect(center=(PANTALLA_ANCHO // 2, PANTALLA_ALTO // 2 - 50))
+    instrucciones_rect = instrucciones.get_rect(center=(PANTALLA_ANCHO // 2, PANTALLA_ALTO // 2 + 50))
+    pantalla.blit(ganaste_texto, ganaste_rect)
     pantalla.blit(instrucciones, instrucciones_rect)
 
 def reiniciar_juego():
@@ -290,42 +301,60 @@ def juego():
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 corriendo = False
-            if estado_juego == "MENU" or estado_juego == "FIN_DEL_JUEGO":
+            if estado_juego == "MENU" or estado_juego == "FIN_DEL_JUEGO" or estado_juego == "GANASTE":
                 if evento.type == pygame.KEYDOWN:
                     if evento.key == pygame.K_SPACE or evento.key == pygame.K_RETURN:
                         estado_juego = reiniciar_juego()
                         musica_fondo.play(loops=-1)
             elif estado_juego == "JUGANDO":
-                if not boss_activo and evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
+                # La condición para disparar se ha simplificado para que funcione en cualquier momento del juego
+                if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
                     jugador.disparar(grupo_balas)
         
         # Lógica de juego
         if estado_juego == "JUGANDO":
-            # Pasamos la posición del jugador al update del jefe
             if boss_activo:
                 boss.update(jugador.rect.center)
                 grupo_proyectiles_boss.update()
             jugador.mover()
             grupo_balas.update()
-            grupo_zombies.update(jugador.rect.center)
             
-            colisiones = pygame.sprite.groupcollide(grupo_zombies, grupo_balas, True, True)
-            if colisiones:
-                zombis_eliminados += len(colisiones)
+            # Daño al jefe por colisión con balas
+            if boss_activo:
+                colisiones_boss = pygame.sprite.spritecollide(boss, grupo_balas, True)
+                if colisiones_boss:
+                    boss.salud -= len(colisiones_boss)
             
+            # Daño al jugador por proyectil del jefe
             if boss_activo and pygame.sprite.spritecollide(jugador, grupo_proyectiles_boss, True):
-                jugador.salud -= 1
+                jugador.salud -= 10
             
-            if pygame.sprite.spritecollide(jugador, grupo_zombies, False):
-                jugador.salud -= 1
+            # Colisión de zombies con el jugador
+            if not boss_activo:
+                grupo_zombies.update(jugador.rect.center)
+                colisiones = pygame.sprite.groupcollide(grupo_zombies, grupo_balas, True, True)
+                if colisiones:
+                    zombis_eliminados += len(colisiones)
+                if pygame.sprite.spritecollide(jugador, grupo_zombies, False):
+                    jugador.salud -= 1
             
+            # Daño al jugador por colisión con el boss
+            if boss_activo and pygame.sprite.collide_rect(jugador, boss):
+                jugador.salud -= 40
+            
+            # Lógica de victoria/derrota
             if jugador.salud <= 0:
                 estado_juego = "FIN_DEL_JUEGO"
-                if musica_fondo.get_busy():
-                    musica_fondo.stop()
-                if sonido_base_boss.get_busy():
+                musica_fondo.stop()
+                if boss_activo: # Se detiene el sonido del boss solo si estaba activo
                     sonido_base_boss.stop()
+            elif boss_activo and boss.salud <= 0:
+                estado_juego = "GANASTE"
+                musica_fondo.stop()
+                sonido_base_boss.stop()
+
             
+            # Lógica de oleadas
             if len(grupo_zombies) == 0 and not boss_activo:
                 if oleada_actual == 5 and zombis_eliminados == num_zombies_en_oleada:
                     pygame.time.wait(2000)
@@ -360,6 +389,8 @@ def juego():
             mostrar_hud(jugador.salud, oleada_actual, len(grupo_zombies), boss_activo)
         elif estado_juego == "FIN_DEL_JUEGO":
             mostrar_game_over()
+        elif estado_juego == "GANASTE":
+            mostrar_ganaste()
         
         pygame.display.flip()
         reloj.tick(60)
