@@ -3,6 +3,7 @@ import random
 import math
 import time
 
+
 from player import Jugador, Bala
 from zombie import Zombie
 from boss import Boss, BossProjectile
@@ -17,16 +18,18 @@ PANTALLA_ALTO = 600
 pantalla = pygame.display.set_mode((PANTALLA_ANCHO, PANTALLA_ALTO))
 pygame.display.set_caption("Zombie Survival")
 
+
 BLANCO = (255, 255, 255)
 NEGRO = (0, 0, 0)
 ROJO = (255, 0, 0)
 VERDE = (0, 255, 0)
 
+
 fuente_titulo = pygame.font.Font(None, 72)
 fuente_menu = pygame.font.Font(None, 48)
 fuente_hud = pygame.font.Font(None, 36)
 
-# --- Sonidos ---
+
 sonido_disparo = pygame.mixer.Sound('./sounds/shot.mp3')
 sonido_disparo.set_volume(0.2)
 try:
@@ -150,7 +153,7 @@ def juego():
                 if colisiones_boss:
                     boss.salud -= len(colisiones_boss)
             
-            
+           
             if boss_activo and pygame.sprite.spritecollide(jugador, grupo_proyectiles_boss, True):
                 jugador.salud -= 10
             
@@ -163,11 +166,11 @@ def juego():
                 if pygame.sprite.spritecollide(jugador, grupo_zombies, False):
                     jugador.salud -= 1
             
-            
+           
             if boss_activo and pygame.sprite.collide_rect(jugador, boss):
                 jugador.salud -= 40
             
-            # Lógica de victoria/derrota
+            
             if jugador.salud <= 0:
                 estado_juego = "FIN_DEL_JUEGO"
                 musica_fondo.stop()
@@ -178,9 +181,10 @@ def juego():
                 musica_fondo.stop()
                 sonido_base_boss.stop()
             
-            # Lógica de oleadas
+           
             if len(grupo_zombies) == 0 and not boss_activo:
-                if oleada_actual == 5 and zombis_eliminados == num_zombies_en_oleada:
+                
+                if oleada_actual == 9 and zombis_eliminados == num_zombies_en_oleada:
                     pygame.time.wait(2000)
                     sonido_intro_boss.play()
                     pygame.time.wait(int(sonido_intro_boss.get_length() * 1000))
@@ -198,7 +202,7 @@ def juego():
                         grupo_zombies.add(nuevo_zombie)
                         grupo_sprites.add(nuevo_zombie)
         
-        # Renderizado
+    
         if estado_juego == "MENU":
             mostrar_menu()
         elif estado_juego == "JUGANDO":
@@ -220,7 +224,6 @@ def juego():
         reloj.tick(60)
         
     pygame.quit()
-
 
 if __name__ == "__main__":
     juego()
